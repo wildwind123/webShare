@@ -2,11 +2,11 @@
 Share your files with web
 Share your files with web server
 
-#Build
+# Build
 go build Main.go
 
-#Run
-#Linux 
+# Run
+# Linux 
 ./webShare --path /home --port 8006
 open http://your_ip:8006
 
