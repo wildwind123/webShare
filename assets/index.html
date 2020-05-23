@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebShared</title>
+</head>
+<body>
+<div>
+    <header>
+        <div id="header-container">
+            {{.Header}} <br>
+            {{range .Folders}}
+            <a href="?path={{ .LinkFolder }}">{{ .FolderName }}</a>
+            {{end}}
+        </div>
+    </header>
+    <main>
+        <div id="main-container">
+            <table>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Size</th>
+                    <th>Modified</th>
+                </tr>
+                {{range .Files}}
+                <tr>
+                    <td class="file"><a href="{{ .Link }}">{{ .Name }}</a></td>
+                    <td class="type">{{ .Type }}</td>
+                    <td class="size">{{ .Size }}</td>
+                    <td class="modified">{{ .Modified }}</td>
+                </tr>
+                {{end}}
+            </table>
+        </div>
+    </main>
+</div>
+<style>
+    body{
+        display: flex;
+        justify-content: center;
+    }
+    #main-container{
+        /* background-color: blue; */
+
+        max-width: 800px;
+    }
+    header{
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+        height: 40px;
+        background-color: #d5ebb9;
+        z-index: -2;
+    }
+    main{
+        background-color: #e9f2da;
+        border-bottom-left-radius: 10px;
+        border-bottom-right-radius: 10px;
+        box-shadow: #c1c9b7 0.5em 0.5em 0.3em;
+    }
+    #header-container{
+        padding-left: 10px;
+        padding-right: 10px;
+        padding-top: 5px;
+    }
+    #main-container{
+        overflow:auto;
+        padding-left: 10px;
+        padding-right: 10px;
+        padding-top: 5px;
+    }
+    .size,.modified,.type{
+        text-align: center;
+    }
+    td{
+        vertical-align: top;
+        overflow-wrap: break-word;
+        max-width: 195px;
+        min-width: 195px;
+        background-color: #e2ebd3;
+    }
+    @media only screen and (max-device-width: 800px) {
+        table tr td:nth-child(4), table tr th:nth-child(4),table tr td:nth-child(3), table tr th:nth-child(3){
+            display: none;
+        }
+        .type{
+            width: 20px;
+        }
+    }
+
+</style>
+</body>
+</html>
