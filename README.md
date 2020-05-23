@@ -5,9 +5,6 @@ Share your files with web server
 for linux64
 https://github.com/wildwind123/webShare/raw/master/compiled/web_share_linux_x64
 
-# Build
-go build Main.go
-
 # Run
 # Linux 
 ./webShare --path /home --port 8006
