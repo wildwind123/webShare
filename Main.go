@@ -195,7 +195,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			fileIndex++
 		}
 	}
-	fmt.Print(mapFiles)
 
 	w.Write([]byte(getRenderedHtml(mapFiles)))
 }
