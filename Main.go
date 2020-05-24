@@ -1,6 +1,7 @@
 package main
 
 import (
+	"./actions"
 	"./html"
 	"bytes"
 	"fmt"
@@ -39,6 +40,7 @@ type HtmlValues struct {
 	Email   string
 	Files   []File
 	Folders []Folder
+	DirPath string
 }
 
 func init() {
@@ -93,6 +95,7 @@ func main() {
 		return
 	}
 	http.HandleFunc("/", handler)
+	http.HandleFunc("/FileUpload", actions.FileUpload)
 	http.HandleFunc("/file", HandleClient)
 
 	//protect from favicon request
@@ -255,7 +258,7 @@ func getRenderedHtml(f map[int]File) string {
 
 	}
 
-	p := HtmlValues{Header: "WebShare.", Email: "test@mail.ru", Files: files, Folders: getFolders()}
+	p := HtmlValues{Header: "WebShare.", Email: "test@mail.ru", Files: files, Folders: getFolders(), DirPath: allPath}
 	var tpl bytes.Buffer
 	if err := t.Execute(&tpl, p); err != nil {
 		fmt.Println("Error")
