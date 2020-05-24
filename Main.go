@@ -1,9 +1,10 @@
 package main
 
 import (
+	"./html"
 	"bytes"
 	"fmt"
-	"github.com/gobuffalo/packr/v2"
+	//"github.com/gobuffalo/packr/v2"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -17,12 +18,13 @@ import (
 	"strings"
 )
 
-const dateFormat  = "January 2, 2006, 15:04:05"
+const dateFormat = "January 2, 2006, 15:04:05"
+
 var i int
 var rootPath string = ""
 var path string
 var port string = "8000"
-var htmlTemplate string
+var htmlTemplate string = html.HtmlTemplate
 var allPath string
 var help bool
 var haveError bool
@@ -33,14 +35,15 @@ type Folder struct {
 }
 
 type HtmlValues struct {
-	Header string
-	Email  string
-	Files  []File
+	Header  string
+	Email   string
+	Files   []File
 	Folders []Folder
 }
+
 func init() {
 	// set args parameters
-	lastItemArgs := len(os.Args) -1
+	lastItemArgs := len(os.Args) - 1
 	for i, args := range os.Args {
 		if args == "-h" || args == "--help" {
 			help = true
@@ -52,7 +55,7 @@ func init() {
 		if args == "--path" {
 			// set path
 			rootPath = os.Args[i+1]
-		} else if args == "--port"  {
+		} else if args == "--port" {
 			// set port
 			port = os.Args[i+1]
 		} else {
@@ -75,12 +78,12 @@ func init() {
 	printIpInterfaces()
 
 	//get binaryFiles
-	box := packr.New("myBox","./assets")
-	html, err := box.FindString("index2.html")
-	htmlTemplate = html
-	if err != nil {
-		fmt.Println(err)
-	}
+	//box := packr.New("myBox","./assets")
+	//html, err := box.FindString("index2.html")
+	//htmlTemplate = html
+	//if err != nil {
+	//	fmt.Println(err)
+	//}
 }
 
 func main() {
@@ -92,25 +95,25 @@ func main() {
 
 	//protect from favicon request
 	http.HandleFunc("/favicon.ico", doNothing)
-	log.Fatal(http.ListenAndServe("0.0.0.0:"+ port +"", nil))
+	log.Fatal(http.ListenAndServe("0.0.0.0:"+port+"", nil))
 
 }
 
 func shouldStopServer() (bool, string) {
-	if (help) {
+	if help {
 		return true, ""
 	}
-	if (rootPath != "./" && strings.HasPrefix(rootPath, ".")) {
+	if rootPath != "./" && strings.HasPrefix(rootPath, ".") {
 		return true, "Please select full path. Current selected path =" + rootPath
 	} else if rootPath != "./" {
-		if _, err := os.Stat(rootPath); os.IsNotExist(err) && rootPath != ""{
+		if _, err := os.Stat(rootPath); os.IsNotExist(err) && rootPath != "" {
 			return true, "Path not found. path=" + rootPath
 		}
 	}
 	return false, ""
 }
 
-func doNothing(w http.ResponseWriter, r *http.Request){}
+func doNothing(w http.ResponseWriter, r *http.Request) {}
 
 func printIpInterfaces() {
 	ifaces, _ := net.Interfaces()
@@ -140,15 +143,14 @@ type File struct {
 	Size     int64
 	Modified string
 	IsDir    bool
-	Link string
-	Type string
+	Link     string
+	Type     string
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	path = r.URL.Query().Get("path")
 	allPath = getPath()
 	mapFiles := make(map[int]File)
-
 
 	files, err := ioutil.ReadDir(allPath)
 	countFiles := len(files)
@@ -163,8 +165,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
-
 	dirIndex := 0
 	fileIndex := 0
 	for _, f := range files {
@@ -172,48 +172,47 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			mapFiles[dirIndex] = struct {
 				Name     string
 				Size     int64
-				Modified  string
-				IsDir bool
-				Link string
-				Type string
-			}{Name: f.Name(), Size: f.Size(), Modified: f.ModTime().Format(dateFormat), IsDir:true,
-				Link: "?path=" + allPath + f.Name() , Type:"directory"}
+				Modified string
+				IsDir    bool
+				Link     string
+				Type     string
+			}{Name: f.Name(), Size: f.Size(), Modified: f.ModTime().Format(dateFormat), IsDir: true,
+				Link: "?path=" + allPath + f.Name(), Type: "directory"}
 			dirIndex++
 		} else {
-			mapFiles[lastIndexFiles - fileIndex] = struct {
+			mapFiles[lastIndexFiles-fileIndex] = struct {
 				Name     string
 				Size     int64
 				Modified string
-				IsDir bool
-				Link string
-				Type string
-			}{Name: f.Name(), Size: f.Size(), Modified: f.ModTime().Format(dateFormat), IsDir:false,
-				Link: "/file?file=" + allPath + f.Name() + "&fileName=" + f.Name() , Type:  filepath.Ext(f.Name())}
+				IsDir    bool
+				Link     string
+				Type     string
+			}{Name: f.Name(), Size: f.Size(), Modified: f.ModTime().Format(dateFormat), IsDir: false,
+				Link: "/file?file=" + allPath + f.Name() + "&fileName=" + f.Name(), Type: filepath.Ext(f.Name())}
 			fileIndex++
 		}
-		}
+	}
 
-		w.Write([]byte(getRenderedHtml(mapFiles)))
+	w.Write([]byte(getRenderedHtml(mapFiles)))
 }
 
 func getPath() string {
 	fullPath := ""
 	if rootPath == "" {
 		rootPath = "./"
-		fullPath = rootPath + "/" + path +  "/"
-		} else {
-		path = strings.Replace(path ,rootPath,"", -1)
+		fullPath = rootPath + "/" + path + "/"
+	} else {
+		path = strings.Replace(path, rootPath, "", -1)
 		strings.HasPrefix(rootPath, ".")
 	}
-	fullPath = rootPath + "/" + path +  "/"
-
+	fullPath = rootPath + "/" + path + "/"
 
 	//clear, no extra characters
 
 	var reSlash = regexp.MustCompile(`/[/]+`)
 	clearPath1 := reSlash.ReplaceAllString(fullPath, `/`)
 	clearPath1 = reSlash.ReplaceAllString(fullPath, `/`)
-	clearPath2 := strings.Replace(clearPath1 ,"././","./", -1)
+	clearPath2 := strings.Replace(clearPath1, "././", "./", -1)
 	//validate from over folder
 	var re = regexp.MustCompile(`/.[.]+/`)
 	clearPath2 = re.ReplaceAllString(clearPath2, `/`)
@@ -221,9 +220,9 @@ func getPath() string {
 	return clearPath2
 }
 
-func getFolders() []Folder{
-	var folders[]Folder
-	var folderNames[]string
+func getFolders() []Folder {
+	var folders []Folder
+	var folderNames []string
 	if rootPath == "./" {
 		folderNames = strings.SplitAfter(allPath, "/")
 	} else {
@@ -233,7 +232,7 @@ func getFolders() []Folder{
 	folderPath := ""
 	for i, folderName := range folderNames {
 
-		if folderName != "" || i == 0{
+		if folderName != "" || i == 0 {
 			folderPath = folderPath + folderName
 			if i == 0 {
 				folderName = "rootFolder/"
@@ -242,8 +241,8 @@ func getFolders() []Folder{
 
 			folders = append(folders, Folder{folderName, folderPath})
 		}
-		}
-		return folders
+	}
+	return folders
 }
 
 func getRenderedHtml(f map[int]File) string {
@@ -253,13 +252,12 @@ func getRenderedHtml(f map[int]File) string {
 	var files []File
 
 	for i := 0; i < len(f); i++ {
-		files = append(files, File{f[i].Name,f[i].Size,f[i].Modified,true,
-				f[i].Link, f[i].Type})
-
+		files = append(files, File{f[i].Name, f[i].Size, f[i].Modified, true,
+			f[i].Link, f[i].Type})
 
 	}
 
-	p := HtmlValues{Header: "WebShare.", Email: "test@mail.ru", Files : files, Folders: getFolders()}
+	p := HtmlValues{Header: "WebShare.", Email: "test@mail.ru", Files: files, Folders: getFolders()}
 	var tpl bytes.Buffer
 	if err := t.Execute(&tpl, p); err != nil {
 		fmt.Println("Error")
@@ -281,7 +279,7 @@ func HandleClient(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	fmt.Println("Client requests: "  + FilePath)
+	fmt.Println("Client requests: " + FilePath)
 
 	//Check if file exists and open
 	Openfile, err := os.Open(FilePath)
@@ -318,7 +316,7 @@ func HandleClient(writer http.ResponseWriter, request *http.Request) {
 	return
 }
 
-func printHelp()  {
+func printHelp() {
 	fmt.Println("--port - select port, default = 8000")
 	fmt.Println("--path - select full path, default = programm runned folder")
 	fmt.Println("-h --help - Help")
