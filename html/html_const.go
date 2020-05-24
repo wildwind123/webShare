@@ -12,10 +12,18 @@ const HtmlTemplate = "<!DOCTYPE html>" +
 	"<div>" +
 	"<header>" +
 	"<div id=\"header-container\">" +
+	"<div class=\"folders\">" +
 	"{{.Header}} <br>" +
 	"{{range .Folders}}" +
-	"<a href=\"?path={{ .LinkFolder }}\">{{ .FolderName }}</a>" +
+	"<a href=\"?path={{ .LinkFolder }}\"><div class=\"folder-link-name\">|{{ .FolderName }}</div></a>" +
 	"{{end}}" +
+	"</div>" +
+	"<div>" +
+	"<form action=\"/FileUpload?filePath={{ .DirPath }}\" enctype=\"multipart/form-data\" method=\"post\">" +
+	"<input type=\"file\" name=\"myFile[]\" id=\"\" multiple>" +
+	"<input type=\"submit\" value=\"upload files\">" +
+	"</form>" +
+	"</div>" +
 	"</div>" +
 	"</header>" +
 	"<main>" +
@@ -76,7 +84,7 @@ const HtmlTemplate = "<!DOCTYPE html>" +
 	"header{" +
 	"border-top-left-radius: 10px;" +
 	"border-top-right-radius: 10px;" +
-	"height: 50px;" +
+	"min-height: 50px;" +
 	"background-color: #d5ebb9;" +
 	"}" +
 	"main{" +
@@ -89,6 +97,8 @@ const HtmlTemplate = "<!DOCTYPE html>" +
 	"padding-left: 10px;" +
 	"padding-right: 10px;" +
 	"padding-top: 5px;" +
+	"display: flex;" +
+	"display-direction: row" +
 	"}" +
 	".size,.modified,.type{" +
 	"text-align: center;" +
@@ -106,6 +116,14 @@ const HtmlTemplate = "<!DOCTYPE html>" +
 	"background-color: #c8d1b9;" +
 	"}" +
 	"}" +
+	".folders{" +
+	"text-overflow: clip;" +
+	"display: flex;" +
+	"flex-wrap: wrap;" +
+	"word-wrap: break-word;" +
+	"max-width: 350px;" +
+	"}" +
+	".folder-link-name{text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width:100px}" +
 	"</style>" +
 	"</body>" +
 	"</html>"
