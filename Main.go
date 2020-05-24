@@ -179,8 +179,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				Link     string
 				Type     string
 			}{Name: f.Name(), Size: f.Size(), Modified: f.ModTime().Format(dateFormat), IsDir: true,
-				Link: "?path=" + allPath + f.Name(), Type: "directory"}
+				Link: "/?path=" + allPath + f.Name(), Type: "directory"}
 			dirIndex++
+
 		} else {
 			mapFiles[lastIndexFiles-fileIndex] = struct {
 				Name     string
@@ -194,6 +195,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			fileIndex++
 		}
 	}
+	fmt.Print(mapFiles)
 
 	w.Write([]byte(getRenderedHtml(mapFiles)))
 }
