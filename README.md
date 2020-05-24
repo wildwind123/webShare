@@ -11,3 +11,8 @@ open http://your_ip:8006
 
 or just run ./webShare
 default path will be file folder, default port will be 8000
+
+# Help 
+--port - select port, default = 8000 
+--path - select full path, default = programm runned folder
+-h --help - Help
