@@ -54,7 +54,7 @@ func init() {
 		}
 		if args == "--path" {
 			// set path
-			rootPath = os.Args[i+1]
+			rootPath = os.Args[i+1] + "/"
 		} else if args == "--port" {
 			// set port
 			port = os.Args[i+1]
@@ -65,9 +65,11 @@ func init() {
 				fmt.Println(err.Error())
 				return
 			}
-			rootPath = dir
+			rootPath = dir + "/"
 		}
 	}
+	var reSlash = regexp.MustCompile(`/[/]+`)
+	rootPath = reSlash.ReplaceAllString(rootPath, `/`)
 	var text string
 	haveError, text = shouldStopServer()
 	if haveError {
@@ -223,21 +225,16 @@ func getPath() string {
 func getFolders() []Folder {
 	var folders []Folder
 	var folderNames []string
-	if rootPath == "./" {
-		folderNames = strings.SplitAfter(allPath, "/")
-	} else {
-		folderNames = strings.SplitAfter(path, "/")
-	}
 
+	childFolder := strings.Replace(allPath, rootPath, "", -1)
+	folderNames = strings.SplitAfter(childFolder, "/")
 	folderPath := ""
-	for i, folderName := range folderNames {
+	//append first root path
+	folders = append(folders, Folder{"rootFolder/", rootPath})
 
-		if folderName != "" || i == 0 {
-			folderPath = folderPath + folderName
-			if i == 0 {
-				folderName = "rootFolder/"
-				folderPath = allPath
-			}
+	for _, folderName := range folderNames {
+		if folderName != "" || folderName != "/" {
+			folderPath = rootPath + folderPath + folderName
 
 			folders = append(folders, Folder{folderName, folderPath})
 		}
