@@ -2,10 +2,8 @@
 Share your files with web server
 
 # Compiled version
-for linux64
-https://github.com/wildwind123/webShare/raw/master/compiled/linux64/web_share
-for windows86
-https://github.com/wildwind123/webShare/raw/master/compiled/windows86/web_share.exe
+compiled version can download from 
+https://github.com/wildwind123/webShare/tree/master/compiled
 # Run
 # Linux 
 ./webShare --path /home --port 8006
