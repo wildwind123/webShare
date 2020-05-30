@@ -7,7 +7,6 @@ import (
 	"fmt"
 	//"github.com/gobuffalo/packr/v2"
 	"html/template"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -15,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -94,10 +92,10 @@ func main() {
 	}
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/FileUpload", actions.FileUpload)
-	http.HandleFunc("/file", HandleClient)
+	http.HandleFunc("/file", actions.HandleClient)
 
 	//protect from favicon request
-	http.HandleFunc("/favicon.ico", doNothing)
+	http.HandleFunc("/favicon.ico", actions.DoNothing)
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port+"", nil))
 
 }
@@ -115,8 +113,6 @@ func shouldStopServer() (bool, string) {
 	}
 	return false, ""
 }
-
-func doNothing(w http.ResponseWriter, r *http.Request) {}
 
 func printIpInterfaces() {
 	ifaces, _ := net.Interfaces()
@@ -252,7 +248,14 @@ func getRenderedHtml(f map[int]File) string {
 		if err != nil {
 			return err.Error()
 		}
+
 		htmlTemplate = string(file)
+
+		//re := regexp.MustCompile(`\r?\n`)
+		//input := re.ReplaceAllString(htmlTemplate, " ")
+		//re = regexp.MustCompile(`"`)
+		//input = re.ReplaceAllString(input, "'")
+		//fmt.Println(input)
 	}
 	t := template.New("fieldname example")
 	t, _ = t.Parse(htmlTemplate)
@@ -270,57 +273,6 @@ func getRenderedHtml(f map[int]File) string {
 		fmt.Println("Error")
 	}
 	return tpl.String()
-}
-
-func HandleClient(writer http.ResponseWriter, request *http.Request) {
-	//First of check if Get is set in the URL
-	FilePath := request.URL.Query().Get("file")
-	Filename := request.URL.Query().Get("fileName")
-
-	if FilePath == "" {
-		//Get not set, send a 400 bad request
-		http.Error(writer, "Get 'file' not specified in url.", 400)
-		return
-	} else if Filename == "" {
-		http.Error(writer, "File name is empty", 400)
-		return
-	}
-
-	fmt.Println("Client requests: " + FilePath)
-
-	//Check if file exists and open
-	Openfile, err := os.Open(FilePath)
-	defer Openfile.Close() //Close after function return
-	if err != nil {
-		//File not found, send 404
-		http.Error(writer, "File not found.", 404)
-		return
-	}
-
-	//File is found, create and send the correct headers
-
-	//Get the Content-Type of the file
-	//Create a buffer to store the header of the file in
-	FileHeader := make([]byte, 512)
-	//Copy the headers into the FileHeader buffer
-	Openfile.Read(FileHeader)
-	//Get content type of file
-	FileContentType := http.DetectContentType(FileHeader)
-
-	//Get the file size
-	FileStat, _ := Openfile.Stat()                     //Get info from file
-	FileSize := strconv.FormatInt(FileStat.Size(), 10) //Get file size as a string
-
-	//Send the headers
-	writer.Header().Set("Content-Disposition", "attachment; filename="+Filename)
-	writer.Header().Set("Content-Type", FileContentType)
-	writer.Header().Set("Content-Length", FileSize)
-
-	//Send the file
-	//We read 512 bytes from the file already, so we reset the offset back to 0
-	Openfile.Seek(0, 0)
-	io.Copy(writer, Openfile) //'Copy' the file to the client
-	return
 }
 
 func printHelp() {
