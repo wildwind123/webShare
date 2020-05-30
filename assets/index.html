@@ -3,55 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>WebShared</title>
 </head>
 <body>
 <div>
     <header>
         <div id="header-container">
-            {{.Header}} <br>
+{{/*            {{.Header}} <br>*/}}
+            <div class="folders">
+
             {{range .Folders}}
-            <a href="?path={{ .LinkFolder }}">{{ .FolderName }}</a>
+                <div class="folder-container">&#128193;
+                <div class="folder"><a href="?path={{ .LinkFolder }}">{{ .FolderName }}</a></div>
+                </div>
             {{end}}
+            </div>
+            <div>
+                <form action="FileUpload?filePath={{ .DirPath }}" enctype="multipart/form-data" method="post">
+                    <input type="file" name="myFile[]" id="" multiple >
+                    <br>
+                    <input type="submit" value="upload files">
+                    </form>
+            </div>
         </div>
     </header>
     <main>
         <div id="main-container">
-            <table>
-                <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Size</th>
-                    <th>Modified</th>
-                </tr>
-                {{range .Files}}
-                <tr>
-                    <td class="file"><a href="{{ .Link }}">{{ .Name }}</a></td>
-                    <td class="type">{{ .Type }}</td>
-                    <td class="size">{{ .Size }}</td>
-                    <td class="modified">{{ .Modified }}</td>
-                </tr>
-                {{end}}
-            </table>
+            <div class="main-row">
+                <div class="row">
+                    <div class="column1">Name</div>
+                    <div class="column2">Type</div>
+                    <div class="column3">Size</div>
+                    <div class="column4">Modified</div>
+                </div>
+            </div>
+            {{range .Files}}
+                <div class="main-row">
+                    <div class="row">
+                        <div class="column1"><a href="{{ .Link }}">{{ .Name }}</a></div>
+                        <div class="column2">{{ .Type }}</div>
+                        <div class="column3">{{ .Size }}</div>
+                        <div class="column4">{{ .Modified }}</div>
+                    </div>
+                </div>
+            {{end}}
         </div>
     </main>
 </div>
 <style>
+    .row{
+        display: flex;
+        flex-wrap: wrap;
+    }
+    .column1{
+        width: 300px;
+        word-wrap: break-word;
+    }
+    .column2,.column3{
+        margin: 3px;
+        width: 100px;
+        word-wrap: break-word;
+    }
+    .column4{
+        word-wrap: break-word;
+        width: 200px;
+    }
+
     body{
         display: flex;
         justify-content: center;
     }
     #main-container{
-        /* background-color: blue; */
-
-        max-width: 800px;
+        display: flex;
+        flex-direction: column;
+        min-width: 200px;
+        overflow:auto;
+        padding-left: 10px;
+        padding-right: 10px;
+        padding-top: 5px;
     }
     header{
         border-top-left-radius: 10px;
         border-top-right-radius: 10px;
-        height: 40px;
+        min-height: 50px;
         background-color: #d5ebb9;
-        z-index: -2;
     }
     main{
         background-color: #e9f2da;
@@ -64,31 +100,34 @@
         padding-right: 10px;
         padding-top: 5px;
     }
-    #main-container{
-        overflow:auto;
-        padding-left: 10px;
-        padding-right: 10px;
-        padding-top: 5px;
-    }
-    .size,.modified,.type{
-        text-align: center;
-    }
-    td{
-        vertical-align: top;
-        overflow-wrap: break-word;
-        max-width: 195px;
-        min-width: 195px;
+    .main-row{
         background-color: #e2ebd3;
+        margin: 5px;
     }
-    @media only screen and (max-device-width: 800px) {
-        table tr td:nth-child(4), table tr th:nth-child(4),table tr td:nth-child(3), table tr th:nth-child(3){
-            display: none;
-        }
-        .type{
-            width: 20px;
-        }
+    .folders{
+        display: flex;
+        flex-wrap: wrap;
+    }
+    .folder{
+        max-width: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .folder-container{
+        display: flex;
     }
 
+    @media screen and (max-width: 1000px) {
+        .column1,.column2,.column3,.column4 {
+            width: 100px;
+        }
+        .main-row{
+            background-color: #c8d1b9;
+        }
+    }
+    input{
+        margin: 3px;
+    }
 </style>
 </body>
 </html>

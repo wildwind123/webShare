@@ -7,7 +7,6 @@ import (
 	"fmt"
 	//"github.com/gobuffalo/packr/v2"
 	"html/template"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -15,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -29,6 +27,7 @@ var htmlTemplate string = html.HtmlTemplate
 var allPath string
 var help bool
 var haveError bool
+var html_template bool
 
 type Folder struct {
 	FolderName string
@@ -44,8 +43,16 @@ type HtmlValues struct {
 }
 
 func init() {
-	// set args parameters
 	lastItemArgs := len(os.Args) - 1
+
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		haveError = true
+		fmt.Println(err.Error())
+		return
+	}
+	rootPath = dir + "/"
+
 	for i, args := range os.Args {
 		if args == "-h" || args == "--help" {
 			help = true
@@ -60,16 +67,13 @@ func init() {
 		} else if args == "--port" {
 			// set port
 			port = os.Args[i+1]
-		} else {
-			dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-			if err != nil {
-				haveError = true
-				fmt.Println(err.Error())
-				return
+		} else if args == "--template" {
+			if os.Args[i+1] == "true" {
+				html_template = true
 			}
-			rootPath = dir + "/"
 		}
 	}
+
 	var reSlash = regexp.MustCompile(`/[/]+`)
 	rootPath = reSlash.ReplaceAllString(rootPath, `/`)
 	var text string
@@ -80,14 +84,6 @@ func init() {
 		return
 	}
 	printIpInterfaces()
-
-	//get binaryFiles
-	//box := packr.New("myBox","./assets")
-	//html, err := box.FindString("index2.html")
-	//htmlTemplate = html
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
 }
 
 func main() {
@@ -96,10 +92,10 @@ func main() {
 	}
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/FileUpload", actions.FileUpload)
-	http.HandleFunc("/file", HandleClient)
+	http.HandleFunc("/file", actions.HandleClient)
 
 	//protect from favicon request
-	http.HandleFunc("/favicon.ico", doNothing)
+	http.HandleFunc("/favicon.ico", actions.DoNothing)
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port+"", nil))
 
 }
@@ -117,8 +113,6 @@ func shouldStopServer() (bool, string) {
 	}
 	return false, ""
 }
-
-func doNothing(w http.ResponseWriter, r *http.Request) {}
 
 func printIpInterfaces() {
 	ifaces, _ := net.Interfaces()
@@ -181,7 +175,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				IsDir    bool
 				Link     string
 				Type     string
-			}{Name: f.Name(), Size: f.Size(), Modified: f.ModTime().Format(dateFormat), IsDir: true,
+			}{Name: f.Name(), Size: 0, Modified: f.ModTime().Format(dateFormat), IsDir: true,
 				Link: "/?path=" + allPath + f.Name(), Type: "directory"}
 			dirIndex++
 
@@ -234,11 +228,13 @@ func getFolders() []Folder {
 	folderNames = strings.SplitAfter(childFolder, "/")
 	folderPath := ""
 	//append first root path
-	folders = append(folders, Folder{"rootFolder/", rootPath})
+	folders = append(folders, Folder{"rootFolder", rootPath})
 
 	for _, folderName := range folderNames {
-		if folderName != "" || folderName != "/" {
+		if folderName != "" && folderName != "/" {
 			folderPath = rootPath + folderPath + folderName
+			var reSlash = regexp.MustCompile(`[/\\]`)
+			folderName = reSlash.ReplaceAllString(folderName, ``)
 
 			folders = append(folders, Folder{folderName, folderPath})
 		}
@@ -247,7 +243,20 @@ func getFolders() []Folder {
 }
 
 func getRenderedHtml(f map[int]File) string {
+	if html_template {
+		file, err := ioutil.ReadFile("assets/index.html")
+		if err != nil {
+			return err.Error()
+		}
 
+		htmlTemplate = string(file)
+
+		//re := regexp.MustCompile(`\r?\n`)
+		//input := re.ReplaceAllString(htmlTemplate, " ")
+		//re = regexp.MustCompile(`"`)
+		//input = re.ReplaceAllString(input, "'")
+		//fmt.Println(input)
+	}
 	t := template.New("fieldname example")
 	t, _ = t.Parse(htmlTemplate)
 	var files []File
@@ -266,59 +275,10 @@ func getRenderedHtml(f map[int]File) string {
 	return tpl.String()
 }
 
-func HandleClient(writer http.ResponseWriter, request *http.Request) {
-	//First of check if Get is set in the URL
-	FilePath := request.URL.Query().Get("file")
-	Filename := request.URL.Query().Get("fileName")
-
-	if FilePath == "" {
-		//Get not set, send a 400 bad request
-		http.Error(writer, "Get 'file' not specified in url.", 400)
-		return
-	} else if Filename == "" {
-		http.Error(writer, "File name is empty", 400)
-		return
-	}
-
-	fmt.Println("Client requests: " + FilePath)
-
-	//Check if file exists and open
-	Openfile, err := os.Open(FilePath)
-	defer Openfile.Close() //Close after function return
-	if err != nil {
-		//File not found, send 404
-		http.Error(writer, "File not found.", 404)
-		return
-	}
-
-	//File is found, create and send the correct headers
-
-	//Get the Content-Type of the file
-	//Create a buffer to store the header of the file in
-	FileHeader := make([]byte, 512)
-	//Copy the headers into the FileHeader buffer
-	Openfile.Read(FileHeader)
-	//Get content type of file
-	FileContentType := http.DetectContentType(FileHeader)
-
-	//Get the file size
-	FileStat, _ := Openfile.Stat()                     //Get info from file
-	FileSize := strconv.FormatInt(FileStat.Size(), 10) //Get file size as a string
-
-	//Send the headers
-	writer.Header().Set("Content-Disposition", "attachment; filename="+Filename)
-	writer.Header().Set("Content-Type", FileContentType)
-	writer.Header().Set("Content-Length", FileSize)
-
-	//Send the file
-	//We read 512 bytes from the file already, so we reset the offset back to 0
-	Openfile.Seek(0, 0)
-	io.Copy(writer, Openfile) //'Copy' the file to the client
-	return
-}
-
 func printHelp() {
-	fmt.Println("--port - select port, default = 8000")
-	fmt.Println("--path - select full path, default = programm runned folder")
+	fmt.Println("--port [port] - select port, default = 8000")
+	fmt.Println("--path [fullPath]- select full path, default = programm runned folder")
+	fmt.Println("--template [true] - if you want to use yourself template from assets/index.html")
 	fmt.Println("-h --help - Help")
+	fmt.Println("https://github.com/wildwind123/webShare")
 }

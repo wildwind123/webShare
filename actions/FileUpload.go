@@ -10,21 +10,24 @@ func FileUpload(w http.ResponseWriter, r *http.Request) {
 	dirPath := r.URL.Query().Get("filePath")
 	fmt.Println(dirPath)
 	if err := r.ParseMultipartForm(5000 << 20); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.Header().Add("Content-Type", "text/html")
+		w.Write([]byte(err.Error() + "<br><a href=\"./\"> Back Home page </a>"))
 		return
 	}
 	files := r.MultipartForm.File["myFile[]"]
 	for _, f := range files {
 		file, err := f.Open()
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			w.Header().Add("Content-Type", "text/html")
+			w.Write([]byte(err.Error() + "<br><a href=\"./\"> Back Home page </a>"))
 			return
 		}
 		file.Close()
 
 		tempFile, err := ioutil.TempFile(dirPath, "wb*_"+f.Filename)
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			w.Header().Add("Content-Type", "text/html")
+			w.Write([]byte(err.Error() + "<br><a href=\"./\"> Back Home page </a>"))
 			return
 		}
 		defer tempFile.Close()
