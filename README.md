@@ -1,5 +1,5 @@
 # webShare
-Share your files with web server
+Share and upload your files from web server
 
 # Compiled version
 compiled version can download from 

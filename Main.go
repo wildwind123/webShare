@@ -29,6 +29,7 @@ var htmlTemplate string = html.HtmlTemplate
 var allPath string
 var help bool
 var haveError bool
+var html_template bool
 
 type Folder struct {
 	FolderName string
@@ -44,8 +45,16 @@ type HtmlValues struct {
 }
 
 func init() {
-	// set args parameters
 	lastItemArgs := len(os.Args) - 1
+
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		haveError = true
+		fmt.Println(err.Error())
+		return
+	}
+	rootPath = dir + "/"
+
 	for i, args := range os.Args {
 		if args == "-h" || args == "--help" {
 			help = true
@@ -60,16 +69,13 @@ func init() {
 		} else if args == "--port" {
 			// set port
 			port = os.Args[i+1]
-		} else {
-			dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-			if err != nil {
-				haveError = true
-				fmt.Println(err.Error())
-				return
+		} else if args == "--template" {
+			if os.Args[i+1] == "true" {
+				html_template = true
 			}
-			rootPath = dir + "/"
 		}
 	}
+
 	var reSlash = regexp.MustCompile(`/[/]+`)
 	rootPath = reSlash.ReplaceAllString(rootPath, `/`)
 	var text string
@@ -80,14 +86,6 @@ func init() {
 		return
 	}
 	printIpInterfaces()
-
-	//get binaryFiles
-	//box := packr.New("myBox","./assets")
-	//html, err := box.FindString("index2.html")
-	//htmlTemplate = html
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
 }
 
 func main() {
@@ -181,7 +179,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				IsDir    bool
 				Link     string
 				Type     string
-			}{Name: f.Name(), Size: f.Size(), Modified: f.ModTime().Format(dateFormat), IsDir: true,
+			}{Name: f.Name(), Size: 0, Modified: f.ModTime().Format(dateFormat), IsDir: true,
 				Link: "/?path=" + allPath + f.Name(), Type: "directory"}
 			dirIndex++
 
@@ -234,11 +232,13 @@ func getFolders() []Folder {
 	folderNames = strings.SplitAfter(childFolder, "/")
 	folderPath := ""
 	//append first root path
-	folders = append(folders, Folder{"rootFolder/", rootPath})
+	folders = append(folders, Folder{"rootFolder", rootPath})
 
 	for _, folderName := range folderNames {
-		if folderName != "" || folderName != "/" {
+		if folderName != "" && folderName != "/" {
 			folderPath = rootPath + folderPath + folderName
+			var reSlash = regexp.MustCompile(`[/\\]`)
+			folderName = reSlash.ReplaceAllString(folderName, ``)
 
 			folders = append(folders, Folder{folderName, folderPath})
 		}
@@ -247,7 +247,13 @@ func getFolders() []Folder {
 }
 
 func getRenderedHtml(f map[int]File) string {
-
+	if html_template {
+		file, err := ioutil.ReadFile("assets/index.html")
+		if err != nil {
+			return err.Error()
+		}
+		htmlTemplate = string(file)
+	}
 	t := template.New("fieldname example")
 	t, _ = t.Parse(htmlTemplate)
 	var files []File
@@ -318,7 +324,9 @@ func HandleClient(writer http.ResponseWriter, request *http.Request) {
 }
 
 func printHelp() {
-	fmt.Println("--port - select port, default = 8000")
-	fmt.Println("--path - select full path, default = programm runned folder")
+	fmt.Println("--port [port] - select port, default = 8000")
+	fmt.Println("--path [fullPath]- select full path, default = programm runned folder")
+	fmt.Println("--template [true] - if you want to use yourself template from assets/index.html")
 	fmt.Println("-h --help - Help")
+	fmt.Println("https://github.com/wildwind123/webShare")
 }
