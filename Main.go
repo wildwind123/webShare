@@ -28,6 +28,7 @@ var allPath string
 var help bool
 var haveError bool
 var html_template bool
+var browserSupportedFiles map[string]FileType
 
 type Folder struct {
 	FolderName string
@@ -84,6 +85,36 @@ func init() {
 		return
 	}
 	printIpInterfaces()
+	setSupportedFiles()
+}
+
+type FileType struct {
+	Extension []string
+	Icon      string
+}
+
+func setSupportedFiles() {
+	browserSupportedFiles = make(map[string]FileType)
+	browserSupportedFiles["img"] = FileType{
+		Extension: []string{".apng", ".bmp", ".gif", ".ico", ".cur", ".jpg", ".jpeg", ".jfif", ".pjpeg", ".pjp", ".png", ".svg", ".tif", ".tiff", ".webp"},
+		Icon:      "img",
+	}
+	browserSupportedFiles["pdf"] = FileType{
+		Extension: []string{".pdf"},
+		Icon:      "pdf",
+	}
+	browserSupportedFiles["audio"] = FileType{
+		Extension: []string{".aac", ".mp3", "wav", ".webm"},
+		Icon:      "audio",
+	}
+	browserSupportedFiles["video"] = FileType{
+		Extension: []string{".mp4", ".webm"},
+		Icon:      "video",
+	}
+	browserSupportedFiles["txt"] = FileType{
+		Extension: []string{".css", ".txt", ".php"},
+		Icon:      "txt",
+	}
 }
 
 func main() {
@@ -93,11 +124,16 @@ func main() {
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/FileUpload", actions.FileUpload)
 	http.HandleFunc("/file", actions.HandleClient)
+	http.HandleFunc("/show", icoHandler)
 
 	//protect from favicon request
 	http.HandleFunc("/favicon.ico", actions.DoNothing)
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port+"", nil))
 
+}
+func icoHandler(w http.ResponseWriter, r *http.Request) {
+	filePath := r.URL.Query().Get("file")
+	http.ServeFile(w, r, filePath)
 }
 
 func shouldStopServer() (bool, string) {
@@ -141,9 +177,11 @@ type File struct {
 	Name     string
 	Size     int64
 	Modified string
-	IsDir    bool
+	IsDir    string
 	Link     string
+	LinkShow string
 	Type     string
+	Icon     string
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -172,28 +210,48 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				Name     string
 				Size     int64
 				Modified string
-				IsDir    bool
+				IsDir    string
 				Link     string
+				LinkShow string
 				Type     string
-			}{Name: f.Name(), Size: 0, Modified: f.ModTime().Format(dateFormat), IsDir: true,
-				Link: "/?path=" + allPath + f.Name(), Type: "directory"}
+				Icon     string
+			}{Name: f.Name(), Size: 0, Modified: f.ModTime().Format(dateFormat), IsDir: "true",
+				Link:     "/?path=" + allPath + f.Name(),
+				LinkShow: "", Type: "directory", Icon: ""}
 			dirIndex++
 
 		} else {
+			fname := f.Name()
+			fileExt := filepath.Ext(fname)
 			mapFiles[lastIndexFiles-fileIndex] = struct {
 				Name     string
 				Size     int64
 				Modified string
-				IsDir    bool
+				IsDir    string
 				Link     string
+				LinkShow string
 				Type     string
-			}{Name: f.Name(), Size: f.Size(), Modified: f.ModTime().Format(dateFormat), IsDir: false,
-				Link: "/file?file=" + allPath + f.Name() + "&fileName=" + f.Name(), Type: filepath.Ext(f.Name())}
+				Icon     string
+			}{Name: fname, Size: f.Size(), Modified: f.ModTime().Format(dateFormat), IsDir: "",
+				Link:     "/file?file=" + allPath + fname + "&fileName=" + fname,
+				LinkShow: "/show?file=" + allPath + fname, Type: fileExt, Icon: getIcon(fileExt)}
 			fileIndex++
 		}
 	}
 
 	w.Write([]byte(getRenderedHtml(mapFiles)))
+}
+
+func getIcon(fileExt string) string {
+	fileExt = strings.ToLower(fileExt)
+	for _, typeFiles := range browserSupportedFiles {
+		for _, typeExtension := range typeFiles.Extension {
+			if fileExt == typeExtension {
+				return typeFiles.Icon
+			}
+		}
+	}
+	return ""
 }
 
 func getPath() string {
@@ -262,8 +320,8 @@ func getRenderedHtml(f map[int]File) string {
 	var files []File
 
 	for i := 0; i < len(f); i++ {
-		files = append(files, File{f[i].Name, f[i].Size, f[i].Modified, true,
-			f[i].Link, f[i].Type})
+		files = append(files, File{f[i].Name, f[i].Size, f[i].Modified, f[i].IsDir,
+			f[i].Link, f[i].LinkShow, f[i].Type, f[i].Icon})
 
 	}
 
