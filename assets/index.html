@@ -43,13 +43,19 @@
 
                     <div class="row">
                         <div class="column1">
-                                <a href="{{ .Link }}"> {{ .Name }}</a>
+                            {{if .IsDir }}
+                                <a href="{{ .Link }}" title="Open folder"> {{ .Name }}</a>
+                            {{else}}
+                                <a href="{{ .Link }}" title="Download file"> {{ .Name }}</a>
+                            {{end}}
                         </div>
                         <div class="column2">
                             {{if .IsDir }}
                                 {{ .Type }}
                             {{else}}
-                                <a href="{{ .LinkShow }}">&#128270; {{ .Type }} </a>
+                                <a href="{{ .LinkShow }}"
+                                   title="Try open file in browser, if your browser supported this will be open,
+                                   if not supported will be downloaded">&#128270; {{ .Type }} </a>
                             {{end}}
                         </div>
                         <div class="column3"> {{if .Size }} {{ .Size }} {{else}}  {{end}} </div>
