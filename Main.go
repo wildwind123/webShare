@@ -4,6 +4,7 @@ import (
 	"./actions"
 	"./html"
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	//"github.com/gobuffalo/packr/v2"
 	"html/template"
@@ -28,6 +29,8 @@ var allPath string
 var help bool
 var haveError bool
 var html_template bool
+var browserSupportedFiles map[string]FileType
+var password = ""
 
 type Folder struct {
 	FolderName string
@@ -53,9 +56,28 @@ func init() {
 	}
 	rootPath = dir + "/"
 
+	existOption := []string{"--help", "-help", "--path", "--port", "--template", "--password"}
+
 	for i, args := range os.Args {
+
 		if args == "-h" || args == "--help" {
 			help = true
+		}
+		var reSlash = regexp.MustCompile(`^--`)
+		var result = reSlash.Find([]byte(args))
+		optionExist := false
+		if len(result) > 0 {
+			for _, option := range existOption {
+				if args == option {
+					optionExist = true
+				}
+			}
+			if !optionExist {
+				fmt.Println("some option does not exist, option = " + args)
+				printHelp()
+				haveError = true
+				return
+			}
 		}
 
 		if i == lastItemArgs {
@@ -71,6 +93,8 @@ func init() {
 			if os.Args[i+1] == "true" {
 				html_template = true
 			}
+		} else if args == "--password" {
+			password = os.Args[i+1]
 		}
 	}
 
@@ -84,20 +108,88 @@ func init() {
 		return
 	}
 	printIpInterfaces()
+	setSupportedFiles()
+}
+
+type FileType struct {
+	Extension []string
+	Icon      string
+}
+
+func setSupportedFiles() {
+	browserSupportedFiles = make(map[string]FileType)
+	browserSupportedFiles["img"] = FileType{
+		Extension: []string{".apng", ".bmp", ".gif", ".ico", ".cur", ".jpg", ".jpeg", ".jfif", ".pjpeg", ".pjp", ".png", ".svg", ".tif", ".tiff", ".webp"},
+		Icon:      "img",
+	}
+	browserSupportedFiles["pdf"] = FileType{
+		Extension: []string{".pdf"},
+		Icon:      "pdf",
+	}
+	browserSupportedFiles["audio"] = FileType{
+		Extension: []string{".aac", ".mp3", "wav", ".webm"},
+		Icon:      "audio",
+	}
+	browserSupportedFiles["video"] = FileType{
+		Extension: []string{".mp4", ".webm"},
+		Icon:      "video",
+	}
+	browserSupportedFiles["txt"] = FileType{
+		Extension: []string{".css", ".txt", ".php"},
+		Icon:      "txt",
+	}
 }
 
 func main() {
 	if haveError {
 		return
 	}
-	http.HandleFunc("/", handler)
-	http.HandleFunc("/FileUpload", actions.FileUpload)
-	http.HandleFunc("/file", actions.HandleClient)
+	http.HandleFunc("/", myMiddleware(handler))
+	http.HandleFunc("/FileUpload", myMiddleware(actions.FileUpload))
+	http.HandleFunc("/file", myMiddleware(actions.HandleClient))
+	http.HandleFunc("/show", myMiddleware(FileHandler))
 
 	//protect from favicon request
 	http.HandleFunc("/favicon.ico", actions.DoNothing)
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port+"", nil))
 
+}
+
+func myMiddleware(next http.HandlerFunc) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if checkAuth(w, r) || password == "" {
+			next(w, r)
+		} else {
+			w.Header().Set("WWW-Authenticate", `Basic realm="MY REALM"`)
+			w.WriteHeader(401)
+			w.Write([]byte("401 Unauthorized\n"))
+		}
+	}
+}
+
+func checkAuth(w http.ResponseWriter, r *http.Request) bool {
+	s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+	if len(s) != 2 {
+		return false
+	}
+
+	b, err := base64.StdEncoding.DecodeString(s[1])
+	if err != nil {
+		return false
+	}
+
+	pair := strings.SplitN(string(b), ":", 2)
+	if len(pair) != 2 {
+		return false
+	}
+
+	return pair[0] == "user" && pair[1] == password
+}
+
+func FileHandler(w http.ResponseWriter, r *http.Request) {
+	filePath := r.URL.Query().Get("file")
+	http.ServeFile(w, r, filePath)
 }
 
 func shouldStopServer() (bool, string) {
@@ -141,9 +233,11 @@ type File struct {
 	Name     string
 	Size     int64
 	Modified string
-	IsDir    bool
+	IsDir    string
 	Link     string
+	LinkShow string
 	Type     string
+	Icon     string
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -172,28 +266,48 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				Name     string
 				Size     int64
 				Modified string
-				IsDir    bool
+				IsDir    string
 				Link     string
+				LinkShow string
 				Type     string
-			}{Name: f.Name(), Size: 0, Modified: f.ModTime().Format(dateFormat), IsDir: true,
-				Link: "/?path=" + allPath + f.Name(), Type: "directory"}
+				Icon     string
+			}{Name: f.Name(), Size: 0, Modified: f.ModTime().Format(dateFormat), IsDir: "true",
+				Link:     "/?path=" + allPath + f.Name(),
+				LinkShow: "", Type: "directory", Icon: ""}
 			dirIndex++
 
 		} else {
+			fname := f.Name()
+			fileExt := filepath.Ext(fname)
 			mapFiles[lastIndexFiles-fileIndex] = struct {
 				Name     string
 				Size     int64
 				Modified string
-				IsDir    bool
+				IsDir    string
 				Link     string
+				LinkShow string
 				Type     string
-			}{Name: f.Name(), Size: f.Size(), Modified: f.ModTime().Format(dateFormat), IsDir: false,
-				Link: "/file?file=" + allPath + f.Name() + "&fileName=" + f.Name(), Type: filepath.Ext(f.Name())}
+				Icon     string
+			}{Name: fname, Size: f.Size(), Modified: f.ModTime().Format(dateFormat), IsDir: "",
+				Link:     "/file?file=" + allPath + fname + "&fileName=" + fname,
+				LinkShow: "/show?file=" + allPath + fname, Type: fileExt, Icon: getIcon(fileExt)}
 			fileIndex++
 		}
 	}
 
 	w.Write([]byte(getRenderedHtml(mapFiles)))
+}
+
+func getIcon(fileExt string) string {
+	fileExt = strings.ToLower(fileExt)
+	for _, typeFiles := range browserSupportedFiles {
+		for _, typeExtension := range typeFiles.Extension {
+			if fileExt == typeExtension {
+				return typeFiles.Icon
+			}
+		}
+	}
+	return ""
 }
 
 func getPath() string {
@@ -262,8 +376,8 @@ func getRenderedHtml(f map[int]File) string {
 	var files []File
 
 	for i := 0; i < len(f); i++ {
-		files = append(files, File{f[i].Name, f[i].Size, f[i].Modified, true,
-			f[i].Link, f[i].Type})
+		files = append(files, File{f[i].Name, f[i].Size, f[i].Modified, f[i].IsDir,
+			f[i].Link, f[i].LinkShow, f[i].Type, f[i].Icon})
 
 	}
 
@@ -276,9 +390,11 @@ func getRenderedHtml(f map[int]File) string {
 }
 
 func printHelp() {
+	fmt.Println("https://github.com/wildwind123/webShare")
+	fmt.Println("version 1.0")
 	fmt.Println("--port [port] - select port, default = 8000")
 	fmt.Println("--path [fullPath]- select full path, default = programm runned folder")
 	fmt.Println("--template [true] - if you want to use yourself template from assets/index.html")
+	fmt.Println("--password [password] - set password, username is always 'user'")
 	fmt.Println("-h --help - Help")
-	fmt.Println("https://github.com/wildwind123/webShare")
 }
