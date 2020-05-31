@@ -1,4 +1,5 @@
 # webShare
+v: 1.0 \
 Share and upload your files from web server
 
 # Compiled version
@@ -17,10 +18,11 @@ default path will be file folder, default port will be 8000
 web_share.exe 
 default path will be file folder, default port will be 8000
 # Help 
---port - select port, default = 8000 \
---path - select full path, default = programm runned folder \
--h --help - Help
-
+	--port [port] - select port, default = 8000" 
+	--path [fullPath]- select full path, default = programm runned folder
+	--template [true] - if you want to use yourself template from assets/index.html
+	--password [password] - set password, username is always 'user'
+	-h --help - Help
 # Multiple Build
 
 env GOOS=linux GOARCH=386 go build -o compiled/linux86 ; \
